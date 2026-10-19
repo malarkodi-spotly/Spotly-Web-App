@@ -1,0 +1,510 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+
+  --font-sans: 'Inter', sans-serif;
+  --font-heading: 'Outfit', sans-serif;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  /* Brand Colors: Deep Royal Blue #0d3da8 */
+  --background: 210 20% 98%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  /* Primary Royal Blue #241e98 */
+  --primary: 243 67% 36%;
+  --primary-foreground: 210 40% 98%;
+
+  /* Secondary Blue Accent */
+  --secondary: 221 80% 94%;
+  --secondary-foreground: 221 86% 35.5%;
+
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --ring: 221 86% 35.5%;
+
+  --radius: 1rem;
+
+  --chart-1: 12 76% 61%;
+  --chart-2: 173 58% 39%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+}
+
+.dark {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+
+  --primary: 217 91% 60%;
+  --primary-foreground: 222.2 47.4% 11.2%;
+
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+
+  --accent: 217.2 32.6% 17.5%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 224.3 76.3% 48%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    background-color: #f8fafc;
+    overflow: auto !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  body {
+    background-color: #f8fafc;
+    overflow: auto !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+    @apply font-sans antialiased text-foreground;
+  }
+
+  #root {
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading font-semibold;
+  }
+
+  button,
+  a,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    cursor: pointer;
+  }
+}
+
+/* Mobile App Layout Utilities */
+@media (max-width: 767px) {
+  .mobile-container {
+    @apply max-w-md mx-auto min-h-screen bg-background relative shadow-2xl overflow-hidden flex flex-col;
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-container {
+    @apply w-full max-w-7xl mx-auto bg-background relative flex flex-col shadow-none border-none overflow-visible;
+  }
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile Safe Area Margins & Insets */
+.safe-area-bottom {
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 16px));
+}
+
+.safe-area-top {
+  padding-top: max(1.5rem, env(safe-area-inset-top, 28px));
+}
+
+.safe-area-insets {
+  padding-top: max(1.5rem, env(safe-area-inset-top, 28px));
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 16px));
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* Custom animations & safe-area helpers */
+.razorpay-container {
+  padding-top: max(0px, env(safe-area-inset-top, 0px)) !important;
+  padding-bottom: max(0px, env(safe-area-inset-bottom, 0px)) !important;
+  padding-left: max(0px, env(safe-area-inset-left, 0px)) !important;
+  padding-right: max(0px, env(safe-area-inset-right, 0px)) !important;
+  box-sizing: border-box !important;
+}
+
+/* Remove underline from phone and email links globally */
+a[href^="tel:"],
+a[href^="mailto:"] {
+  text-decoration: none !important;
+}
+
+/* ==============================================================================
+   GLOBAL PRIMARY & BLUE BUTTON GRADIENT (Mobile & Desktop)
+   Landing page background gradient for all blue action buttons globally
+   ============================================================================== */
+.btn-primary:not([role="switch"]),
+button.btn-primary:not([role="switch"]),
+a.btn-primary,
+.bg-primary-btn:not([role="switch"]),
+button.bg-primary:not([role="switch"]),
+button[class*="bg-primary"]:not([class*="bg-primary/"]):not([class*="hover:"]):not([role="switch"]),
+button[class*="from-[#241e98]"]:not(.location-chip):not([data-chip="location"]):not([class*="shadow-none"]):not([role="switch"]),
+button[class*="from-[#1b1675]"]:not([role="switch"]),
+button[class*="from-[#0d3da8]"]:not([role="switch"]),
+button[class*="from-[#1d4ed8]"]:not([role="switch"]),
+a[class*="from-[#241e98]"],
+a[class*="from-[#1b1675]"],
+a[class*="from-[#0d3da8]"],
+a[class*="from-[#1d4ed8]"],
+button[class*="bg-[#241e98]"]:not([class*="text-"]):not([class*="ring-"]):not([class*="w-6"]):not([class*="w-7"]):not([class*="w-8"]):not([class*="w-9"]):not([class*="w-10"]):not(.location-chip):not([data-chip="location"]):not([class*="shadow-none"]):not([role="switch"]),
+button[class*="bg-[#1b1675]"]:not([class*="text-"]):not([class*="ring-"]):not([class*="w-6"]):not([class*="w-7"]):not([class*="w-8"]):not([class*="w-9"]):not([class*="w-10"]):not([role="switch"]),
+button[class*="bg-[#0d3da8]"]:not([role="switch"]),
+button[class*="bg-[#1d4ed8]"]:not([role="switch"]),
+button[class*="bg-[#1b1778]"]:not([role="switch"]),
+button[class*="bg-[#2b24b1]"]:not([role="switch"]),
+button[class*="bg-[#3e3ab3]"]:not([role="switch"]),
+a[class*="bg-[#241e98]"]:not([class*="text-"]):not([class*="ring-"]):not([class*="w-6"]):not([class*="w-7"]):not([class*="w-8"]):not([class*="w-9"]):not([class*="w-10"]),
+a[class*="bg-[#1b1675]"],
+a[class*="bg-[#0d3da8]"],
+a[class*="bg-primary"]:not([class*="bg-primary/"]):not([class*="hover:"]),
+[role="button"][class*="from-[#241e98]"]:not([role="switch"]),
+[role="button"][class*="from-[#1b1675]"]:not([role="switch"]),
+[role="button"][class*="bg-[#241e98]"]:not([role="switch"]) {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.35) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* ==============================================================================
+   SWITCH TOGGLE STATES: Inactive = Clean Grey, Active = Purple Brand Gradient
+   ============================================================================== */
+button[role="switch"],
+[role="switch"] {
+  cursor: pointer !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease !important;
+}
+
+button[role="switch"][data-state="unchecked"],
+[role="switch"][data-state="unchecked"],
+button[role="switch"][aria-checked="false"],
+[role="switch"][aria-checked="false"] {
+  background-color: #cbd5e1 !important;
+  background: #cbd5e1 !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.08) !important;
+}
+
+button[role="switch"][data-state="unchecked"] span,
+[role="switch"][data-state="unchecked"] span {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+button[role="switch"][data-state="checked"],
+[role="switch"][data-state="checked"],
+button[role="switch"][aria-checked="true"],
+[role="switch"][aria-checked="true"] {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%) !important;
+  background-color: #3b2fad !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 8px -1px rgba(59, 47, 173, 0.4) !important;
+}
+
+button[role="switch"][data-state="checked"] span,
+[role="switch"][data-state="checked"] span {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+}
+
+/* ==============================================================================
+   LOCATION CHIPS & NO-SHADOW CHIP BUTTONS (Strict No Box Shadow & Instant Switch)
+   ============================================================================== */
+.location-chip,
+button.location-chip,
+button[data-chip="location"],
+[data-testid^="chip-location-"],
+button[class*="shadow-none"] {
+  box-shadow: none !important;
+  transition: none !important;
+  transform: none !important;
+}
+
+.location-chip:hover,
+button.location-chip:hover,
+button[data-chip="location"]:hover,
+[data-testid^="chip-location-"]:hover,
+button[class*="shadow-none"]:hover,
+.location-chip:active,
+button.location-chip:active,
+button[data-chip="location"]:active,
+[data-testid^="chip-location-"]:active,
+button[class*="shadow-none"]:active,
+.location-chip:focus,
+button.location-chip:focus,
+button[data-chip="location"]:focus,
+[data-testid^="chip-location-"]:focus {
+  box-shadow: none !important;
+  transform: none !important;
+  filter: none !important;
+}
+
+/* ==============================================================================
+   DISTINCT LUMINOUS HOVER STATE (Globally on hover)
+   Vibrant electric indigo-violet gradient shift with elevated glow
+   ============================================================================== */
+.btn-primary:hover:not(:disabled),
+button.btn-primary:hover:not(:disabled),
+a.btn-primary:hover,
+.bg-primary-btn:hover:not(:disabled),
+button.bg-primary:hover:not(:disabled),
+button[class*="bg-primary"]:not([class*="bg-primary/"]):hover:not(:disabled),
+button[class*="from-[#241e98]"]:not(.location-chip):not([data-chip="location"]):not([class*="shadow-none"]):hover:not(:disabled),
+button[class*="from-[#1b1675]"]:hover:not(:disabled),
+button[class*="from-[#0d3da8]"]:hover:not(:disabled),
+button[class*="from-[#1d4ed8]"]:hover:not(:disabled),
+a[class*="from-[#241e98]"]:hover,
+a[class*="from-[#1b1675]"]:hover,
+a[class*="from-[#0d3da8]"]:hover,
+button[class*="bg-[#241e98]"]:not(.location-chip):not([data-chip="location"]):not([class*="shadow-none"]):hover:not(:disabled),
+button[class*="bg-[#1b1675]"]:hover:not(:disabled),
+button[class*="bg-[#0d3da8]"]:hover:not(:disabled),
+button[class*="bg-[#1d4ed8]"]:hover:not(:disabled),
+button[class*="bg-[#1b1778]"]:hover:not(:disabled),
+button[class*="bg-[#2b24b1]"]:hover:not(:disabled),
+button[class*="bg-[#3e3ab3]"]:hover:not(:disabled),
+a[class*="bg-[#241e98]"]:hover,
+a[class*="bg-[#1b1675]"]:hover,
+a[class*="bg-[#0d3da8]"]:hover,
+a[class*="bg-primary"]:not([class*="bg-primary/"]):hover,
+[role="button"][class*="from-[#241e98]"]:hover:not(:disabled),
+[role="button"][class*="from-[#1b1675]"]:hover:not(:disabled),
+[role="button"][class*="bg-[#241e98]"]:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 35%, #7c3aed 70%, #9333ea 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px -4px rgba(79, 70, 229, 0.45), 0 6px 14px -2px rgba(30, 58, 138, 0.3) !important;
+  filter: brightness(1.07) !important;
+  transform: translateY(-1px);
+}
+
+/* Tactile Active / Press state */
+.btn-primary:active:not(:disabled),
+button.btn-primary:active:not(:disabled),
+button.bg-primary:active:not(:disabled),
+button[class*="from-[#241e98]"]:not(.location-chip):not([data-chip="location"]):not([class*="shadow-none"]):active:not(:disabled),
+button[class*="bg-[#241e98]"]:not(.location-chip):not([data-chip="location"]):not([class*="shadow-none"]):active:not(:disabled) {
+  background: linear-gradient(135deg, #172554 0%, #312599 35%, #581c87 70%, #6d28d9 100%) !important;
+  box-shadow: 0 4px 10px -2px rgba(30, 58, 138, 0.3) !important;
+  transform: translateY(1px) scale(0.99);
+}
+
+/* Maintain disabled state styling */
+button:disabled,
+button[disabled],
+button.disabled {
+  opacity: 0.55 !important;
+  cursor: not-allowed !important;
+}
+
+/* ==============================================================================
+   ACTIVE SIDEBAR TAB & PRIMARY GRADIENT UTILITIES
+   ============================================================================== */
+aside nav button[class*="bg-[#241e98]"],
+nav button[class*="bg-[#241e98]"],
+aside button[class*="text-white"][class*="font-semibold"]:not([class*="bg-red-"]):not([class*="bg-amber-"]) {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px -2px rgba(30, 58, 138, 0.35) !important;
+}
+
+.bg-primary-gradient,
+.gradient-primary,
+.landing-gradient,
+.active-role-tab-pill {
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%) !important;
+}
+
+/* Spotly Inner Pages Vibrant Glow Gradient */
+.spotly-inner-page-bg {
+  background-image:
+    radial-gradient(ellipse at 100% 0%,
+      rgba(225, 75, 255, 0.95) 0%,
+      transparent 36%),
+    radial-gradient(ellipse at 72% 5%,
+      rgba(83, 30, 255, 0.9) 0%,
+      transparent 40%),
+    radial-gradient(ellipse at 58% 65%,
+      rgba(24, 28, 220, 0.7) 0%,
+      transparent 46%),
+    linear-gradient(115deg,
+      #020b50 0%,
+      #061b9e 48%,
+      #2410c9 76%,
+      #740dff 100%) !important;
+  background-repeat: no-repeat !important;
+  background-color: #020b50 !important;
+  background-attachment: fixed !important;
+}
+
+/* Disclaimer Desktop Left Panel Background Image */
+.disclaimer-left-panel-bg {
+  background-image: url('/images/disclaimer-desktop-leftsection.png') !important;
+  background-size: cover !important;
+  background-position: top center !important;
+  background-repeat: no-repeat !important;
+  background-color: #1c177c !important;
+}
+
+/* ==============================================================================
+   GLOBAL MODAL Z-INDEX (Ensures all modals & dialogs appear above desktop header & all layers)
+   ============================================================================== */
+div[class*="fixed inset-0"][class*="z-50"],
+div[class*="fixed inset-0"][class*="z-40"],
+div[class*="fixed inset-0"][class*="z-[100]"],
+div[class*="fixed inset-0"][class*="z-[110]"],
+div[class*="fixed inset-0"][class*="z-[120]"],
+div[class*="fixed inset-0"][class*="z-[130]"],
+div[class*="fixed inset-0"][class*="z-[9999]"],
+div[class*="fixed inset-0"][class*="bg-black"],
+div[class*="fixed inset-0"][class*="bg-slate-900"],
+div[class*="fixed inset-0"][class*="bg-neutral-950"],
+div[role="dialog"] {
+  z-index: 9999 !important;
+}
+
+/* ==============================================================================
+   SKELETON SHIMMER ANIMATION
+   ============================================================================== */
+@keyframes skeletonShimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-skeleton-shimmer {
+  animation: skeletonShimmer 1.8s ease-in-out infinite;
+}
+
+/* ==============================================================================
+   GLOBAL CONTENT & SCREENSHOT COPY PROTECTION
+   Prevents text selection, touch-callout popups, image dragging, and printing
+   ============================================================================== */
+*,
+*::before,
+*::after {
+  -webkit-touch-callout: none !important; /* Disable iOS/Android long-press selection menu */
+  -webkit-user-select: none !important;   /* Safari, Chrome, Android WebView */
+  -khtml-user-select: none !important;
+  -moz-user-select: none !important;      /* Firefox */
+  -ms-user-select: none !important;       /* Edge/IE */
+  user-select: none !important;           /* Standard CSS3 */
+}
+
+/* Allow normal text typing and cursor movement in form inputs and textareas */
+input,
+textarea,
+[contenteditable="true"],
+input *,
+textarea * {
+  -webkit-touch-callout: default !important;
+  -webkit-user-select: text !important;
+  -khtml-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  user-select: text !important;
+}
+
+/* Disable image dragging across all screens */
+img {
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-drag: none !important;
+  pointer-events: auto;
+}
+
+/* Prevent screen printing / Print-to-PDF */
+@media print {
+  html,
+  body {
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+}

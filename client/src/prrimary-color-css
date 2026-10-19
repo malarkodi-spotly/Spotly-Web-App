@@ -1,0 +1,25 @@
+background-image:
+    radial-gradient(
+      ellipse at 100% 0%,
+      rgba(225, 75, 255, 0.95) 0%,
+      transparent 36%
+    ),
+    radial-gradient(
+      ellipse at 72% 5%,
+      rgba(83, 30, 255, 0.9) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse at 58% 65%,
+      rgba(24, 28, 220, 0.7) 0%,
+      transparent 46%
+    ),
+    linear-gradient(
+      115deg,
+      #020b50 0%,
+      #061b9e 48%,
+      #2410c9 76%,
+      #740dff 100%
+    );
+
+  background-repeat: no-repeat;

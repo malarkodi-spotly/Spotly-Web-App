@@ -1,0 +1,97 @@
+uploads = []
+
+[[generated]]
+id = "tm4U3iNZPVI_GWWQfUMSG"
+uri = "file://client/public/images/provider-hero.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "qm7DOKUNFtZI7kLSt0MMq"
+uri = "file://client/public/images/seeker-hero.png"
+type = "image"
+title = "generated_image"
+
+[[outputs]]
+id = "GbzkGPdg874pKVOs4gtAC"
+uri = "file://spotly-source-code.tar.gz"
+type = "unspecified"
+title = "Spotly Source Code (without node_modules)"
+
+[[outputs]]
+id = "kNsqU8rQ2NKZkS1-EXjXb"
+uri = "file://spotly-source-code.zip"
+type = "unspecified"
+title = "Spotly Source Code (ZIP)"
+
+[[outputs]]
+id = "YD1W61xiimvtskGNYGQNs"
+uri = "file://dist-export/spotly-source.tar.gz"
+type = "unspecified"
+title = "Spotly Source Code (tar.gz)"
+
+[[outputs]]
+id = "66YIRz19G3MsesDYmrta-"
+uri = "file://screenshots/01-splash.jpg"
+type = "image"
+title = "1. Splash / Welcome"
+
+[[outputs]]
+id = "D9i0AMwfK3xyYJv1tsx8y"
+uri = "file://screenshots/02-role-selection.jpg"
+type = "image"
+title = "2. Choose Your Role"
+
+[[outputs]]
+id = "w5x64FVs9cZpdsRtpPNBM"
+uri = "file://screenshots/03-login.jpg"
+type = "image"
+title = "3. Login (Phone OTP)"
+
+[[outputs]]
+id = "H4HNJ_xGR2Xe02zTjEM4u"
+uri = "file://screenshots/04-disclaimer.jpg"
+type = "image"
+title = "4. Terms & Conditions"
+
+[[outputs]]
+id = "wAkNjC1dtVLQPbb1hBc4t"
+uri = "file://screenshots/05-location-setup.jpg"
+type = "image"
+title = "5. Location Detection"
+
+[[outputs]]
+id = "PjfImccoqB0OuEO2z6omB"
+uri = "file://screenshots/06-seeker-home.jpg"
+type = "image"
+title = "6. Space Seeker Home"
+
+[[outputs]]
+id = "1pwZ1EIR9Rat6brlwhJ7F"
+uri = "file://screenshots/07-seeker-account.jpg"
+type = "image"
+title = "7. Seeker Profile"
+
+[[outputs]]
+id = "K47089K0sJE9K2g4sG8EI"
+uri = "file://screenshots/08-provider-home.jpg"
+type = "image"
+title = "8. Space Provider Home"
+
+[[outputs]]
+id = "Nf00BruvtgDldBn2oh0Ew"
+uri = "file://screenshots/09-add-space.jpg"
+type = "image"
+title = "9. Add Parking Space"
+
+[[outputs]]
+id = "CS8fc6Z_4EPKZ0qNhm00z"
+uri = "file://screenshots/10-provider-profile.jpg"
+type = "image"
+title = "10. Provider Profile"
+
+[[outputs]]
+id = "iSoNi6nU8XdRQt9mdo8v-"
+uri = "file://dist-export/spotly-db-backup.tar.gz"
+type = "unspecified"
+title = "Spotly Live Database Backup (16MB compressed)"

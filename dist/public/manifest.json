@@ -1,0 +1,23 @@
+{
+  "name": "Spotly – Car & Bike Parking",
+  "short_name": "Spotly",
+  "description": "Find and list car & bike parking spaces near you. Connect Space Providers with Space Seekers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#241e98",
+  "theme_color": "#241e98",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
