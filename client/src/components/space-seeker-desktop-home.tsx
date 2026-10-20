@@ -77,6 +77,7 @@ interface ParkingSpace {
   timeText?: string;
   endTimeText?: string;
   isSpotlyUploaded?: boolean;
+  isPriceHidden?: boolean;
 }
 
 interface SpaceSeekerDesktopHomeProps {
@@ -1784,17 +1785,24 @@ export default function SpaceSeekerDesktopHome({
                               </div>
 
                               {/* Price + Distance */}
-                              <div className="mt-3 flex items-center justify-between">
+                              <div className="mt-3 flex items-center justify-between gap-2 flex-nowrap">
                                 {!space.isSpotlyUploaded ? (
                                   <>
-                                    <div className="flex items-baseline gap-1.5">
-                                      <span className="text-[18px] font-black text-gray-900">₹{(space.rent || 0).toLocaleString("en-IN")}</span>
-                                      <span className="text-[12px] text-gray-400 font-medium">/{space.rentUnit || "month"}</span>
-                                    </div>
+                                    {!space.isPriceHidden && space.rent && space.rent > 0 ? (
+                                      <div className="flex items-baseline gap-1.5 whitespace-nowrap shrink-0">
+                                        <span className="text-[18px] font-black text-gray-900">₹{(space.rent || 0).toLocaleString("en-IN")}</span>
+                                        <span className="text-[12px] text-gray-400 font-medium">/{space.rentUnit || "month"}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200/90 whitespace-nowrap shrink-0 shadow-2xs">
+                                        <EyeOff size={12} className="text-slate-500 shrink-0" />
+                                        <span>Price Hidden</span>
+                                      </div>
+                                    )}
                                     {distText && (
-                                      <span className="bg-amber-50 text-amber-700 border border-amber-200/70 font-bold text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1">
-                                        <Navigation size={10} className="text-amber-600 fill-amber-600" />
-                                        {distText}
+                                      <span className="bg-amber-50 text-amber-700 border border-amber-200/70 font-bold text-[11px] px-2.5 py-1 rounded-full inline-flex items-center gap-1 whitespace-nowrap shrink-0 shadow-2xs">
+                                        <Navigation size={10} className="text-amber-600 fill-amber-600 shrink-0" />
+                                        <span>{distText}</span>
                                       </span>
                                     )}
                                   </>

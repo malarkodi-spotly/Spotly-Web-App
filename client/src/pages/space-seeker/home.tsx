@@ -104,6 +104,7 @@ interface ParkingSpace {
   timeText?: string;
   endTimeText?: string;
   isSpotlyUploaded?: boolean;
+  isPriceHidden?: boolean;
 }
 
 const MOCK_EXPLORE_SPACES_KA: ParkingSpace[] = [];
@@ -1127,6 +1128,18 @@ export default function WorkerHome() {
     const timeMatch = cleanComments.match(/\|\s*Time:\s*([^|\[]+)/i);
     const parsedTime = timeMatch ? timeMatch[1].trim() : undefined;
     if (timeMatch) cleanComments = cleanComments.replace(/\|\s*Time:\s*([^|\[]+)/i, "");
+    const contactMatch = cleanComments.match(/\|\s*(?:Contact|Mobile|Phone):\s*([0-9]{10})/i) || b.comments?.match(/(?:Contact|Mobile|Phone):\s*([0-9]{10})/i);
+    const parsedContactPhone = contactMatch ? contactMatch[1].trim() : undefined;
+    if (contactMatch) cleanComments = cleanComments.replace(/\|\s*(?:Contact|Mobile|Phone):\s*([0-9]{10})/i, "");
+
+    const isPriceHidden = Boolean(
+      cleanComments.includes("Rent: Hidden") ||
+      cleanComments.includes("Price: Hidden") ||
+      b.comments?.includes("Rent: Hidden") ||
+      b.comments?.includes("Price: Hidden") ||
+      (!rentMatch && !isSpotly)
+    );
+
     const descMatch = cleanComments.match(/\|\s*([\s\S]+)$/);
     const photosMatch = b.comments?.match(/\[PHOTOS\]([\s\S]*?)\[\/PHOTOS\]/);
     let parsedPhotos: string[] = [];
@@ -1160,12 +1173,13 @@ export default function WorkerHome() {
       description: descMatch ? descMatch[1].trim() : "Parking space available for rent",
       parkingType: getParkingType(b.serviceName),
       vehicleSize: parsedVehicleSize,
-      ownerPhone: b.ownerPhone || "",
+      ownerPhone: parsedContactPhone || b.ownerPhone || "",
       ownerName: b.ownerName || "Space Owner",
       latitude: b.latitude != null ? b.latitude : null,
       longitude: b.longitude != null ? b.longitude : null,
       photos: parsedPhotos,
       isSpotlyUploaded: isSpotly,
+      isPriceHidden,
     };
   };
 
@@ -3314,15 +3328,22 @@ export default function WorkerHome() {
                             </div>
 
                             {/* Price & Distance */}
-                            <div className="flex items-center justify-between mt-1 pt-1 border-t border-dashed border-slate-100">
-                              <div className="flex items-baseline gap-0.5">
-                                <span className="font-black text-xl text-[#241e98] tracking-tight">₹{space.rent}</span>
-                                <span className="text-xs text-slate-400 font-normal">/{space.rentUnit || "month"}</span>
-                              </div>
+                            <div className="flex items-center justify-between mt-1 pt-1 border-t border-dashed border-slate-100 gap-2 flex-nowrap">
+                              {!space.isPriceHidden && space.rent && space.rent > 0 ? (
+                                <div className="flex items-baseline gap-0.5 whitespace-nowrap shrink-0">
+                                  <span className="font-black text-xl text-[#241e98] tracking-tight">₹{space.rent}</span>
+                                  <span className="text-xs text-slate-400 font-normal">/{space.rentUnit || "month"}</span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-bold text-xs border border-slate-200/90 whitespace-nowrap shrink-0 shadow-2xs">
+                                  <EyeOff size={12} className="text-slate-500 shrink-0" />
+                                  <span>Price Hidden</span>
+                                </div>
+                              )}
                               {distanceText && (
-                                <span className="bg-amber-50 text-amber-700 border border-amber-200/70 font-extrabold text-[11px] px-2.5 py-1 rounded-full flex items-center gap-1 shadow-2xs">
-                                  <Navigation size={10} className="text-amber-600 fill-amber-600 animate-pulse" />
-                                  {distanceText}
+                                <span className="bg-amber-50 text-amber-700 border border-amber-200/70 font-extrabold text-[11px] px-2.5 py-1 rounded-full inline-flex items-center gap-1 shadow-2xs whitespace-nowrap shrink-0">
+                                  <Navigation size={10} className="text-amber-600 fill-amber-600 animate-pulse shrink-0" />
+                                  <span>{distanceText}</span>
                                 </span>
                               )}
                             </div>

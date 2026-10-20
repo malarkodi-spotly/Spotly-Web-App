@@ -30,6 +30,8 @@ import {
   MessageSquare,
   ExternalLink,
   Navigation,
+  Plus,
+  AlertCircle,
 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -110,6 +112,13 @@ export default function AdminSettings() {
   const [feedbackTestModeImmediate, setFeedbackTestModeImmediate] = useState(true);
   const [isEditingFeedback, setIsEditingFeedback] = useState(false);
   const [isSavingFeedback, setIsSavingFeedback] = useState(false);
+
+  // Parking By (Owner / Spotly) allowed numbers state
+  const [allowedParkingByPhones, setAllowedParkingByPhones] = useState<string[]>([]);
+  const [hasLoadedAllowedPhones, setHasLoadedAllowedPhones] = useState(false);
+  const [newAllowedPhone, setNewAllowedPhone] = useState("");
+  const [isSavingAllowedPhones, setIsSavingAllowedPhones] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
 
   // Customer Feedback Reset & Double Confirmation state
   type FeedbackResetTarget = "providers" | "seekers" | "all";
@@ -424,6 +433,29 @@ export default function AdminSettings() {
           if (d.setting?.value) setSpotlyDirectionYearlyPrice(d.setting.value);
         }
       } catch { }
+
+      // Fetch Parking By allowed phones
+      try {
+        const allowedPhonesRes = await fetch(getApiUrl("/api/settings/parking_by_allowed_phones"));
+        if (allowedPhonesRes.ok) {
+          const d = await allowedPhonesRes.json();
+          if (d.setting && d.setting.value !== undefined && d.setting.value !== null) {
+            try {
+              const parsed = JSON.parse(d.setting.value);
+              if (Array.isArray(parsed)) {
+                setAllowedParkingByPhones(parsed.map((p: string) => String(p).trim().replace(/\D/g, "").slice(-10)).filter(Boolean));
+              }
+            } catch {
+              setAllowedParkingByPhones(["7829551049", "9742545584", "7338507767", "9180532078"]);
+            }
+          } else {
+            setAllowedParkingByPhones(["7829551049", "9742545584", "7338507767", "9180532078"]);
+          }
+        }
+      } catch (err) { }
+      finally {
+        setHasLoadedAllowedPhones(true);
+      }
     } catch (error) {
       console.error("Failed to fetch settings:", error);
     } finally {
@@ -432,6 +464,54 @@ export default function AdminSettings() {
   };
 
   const [errorMessage, setErrorMessage] = useState("");
+
+  const handleAddAllowedPhone = async () => {
+    setPhoneError("");
+    const clean = newAllowedPhone.trim().replace(/\D/g, "").slice(-10);
+    if (!clean || clean.length !== 10) {
+      setPhoneError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (allowedParkingByPhones.includes(clean)) {
+      setPhoneError("This number is already in the allowed list.");
+      return;
+    }
+    const updated = [...allowedParkingByPhones, clean];
+    setAllowedParkingByPhones(updated);
+    setNewAllowedPhone("");
+    await saveAllowedParkingByPhones(updated);
+  };
+
+  const handleDeleteAllowedPhone = async (phoneToDelete: string) => {
+    const updated = allowedParkingByPhones.filter((p) => p !== phoneToDelete);
+    setAllowedParkingByPhones(updated);
+    await saveAllowedParkingByPhones(updated);
+  };
+
+  const saveAllowedParkingByPhones = async (list: string[]) => {
+    setIsSavingAllowedPhones(true);
+    try {
+      const res = await adminFetch("/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({
+          key: "parking_by_allowed_phones",
+          value: JSON.stringify(list),
+          description: "Allowed phone numbers for Parking By (Owner / Spotly) field",
+        }),
+      });
+      if (res.ok) {
+        setSuccessMessage("Allowed phone numbers updated successfully!");
+        setTimeout(() => setSuccessMessage(""), 4000);
+      } else {
+        alert("Failed to save allowed numbers to database.");
+      }
+    } catch (err) {
+      console.error("Error saving allowed phones:", err);
+      alert("Error saving allowed numbers.");
+    } finally {
+      setIsSavingAllowedPhones(false);
+    }
+  };
 
   const handleSaveSpotlyDirectionSettings = async () => {
     setIsSavingSpotlyDirection(true);
@@ -1064,6 +1144,130 @@ export default function AdminSettings() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Parking By (Owner / Spotly) Allowed Numbers Whitelist - PROMINENT AT TOP */}
+            <div className="bg-gradient-to-br from-indigo-50/70 via-white to-purple-50/40 rounded-2xl shadow-md border-2 border-indigo-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-indigo-600 rounded-xl flex items-center justify-center text-white shadow-sm shadow-indigo-600/30">
+                    <Phone size={24} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-xl text-slate-900">
+                        Parking By (Instant Owner / Spotly) Allowed Numbers
+                      </h3>
+                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 border border-indigo-300">
+                        {allowedParkingByPhones.length} Active Whitelisted
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-600 mt-0.5">
+                      Only the phone numbers added here will be able to see and post under &quot;Parking By (Instant Owner / Spotly)&quot;. All other users will not see this option.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Add Number Input Form */}
+              <div className="bg-white border border-indigo-100 rounded-xl p-4 mb-6 shadow-xs">
+                <Label htmlFor="new-allowed-phone" className="text-sm font-bold text-slate-800 mb-1.5 block">
+                  Add New Allowed Phone Number
+                </Label>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                      +91
+                    </span>
+                    <Input
+                      id="new-allowed-phone"
+                      type="tel"
+                      maxLength={10}
+                      placeholder="e.g. 7829551049"
+                      value={newAllowedPhone}
+                      onChange={(e) => {
+                        setPhoneError("");
+                        setNewAllowedPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddAllowedPhone();
+                        }
+                      }}
+                      className="pl-14 bg-slate-50/50 border-slate-300 focus:bg-white text-base font-semibold"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={handleAddAllowedPhone}
+                    disabled={isSavingAllowedPhones || !newAllowedPhone.trim()}
+                    className="bg-[#3b2fad] hover:bg-[#322794] text-white px-5 h-11 shrink-0 font-bold shadow-sm shadow-[#3b2fad]/25 cursor-pointer"
+                  >
+                    {isSavingAllowedPhones ? (
+                      <Loader2 size={18} className="animate-spin mr-2" />
+                    ) : (
+                      <Plus size={18} className="mr-2" strokeWidth={2.5} />
+                    )}
+                    Add Number
+                  </Button>
+                </div>
+                {phoneError && (
+                  <p className="text-xs font-semibold text-red-600 mt-2 flex items-center gap-1">
+                    <AlertCircle size={14} />
+                    {phoneError}
+                  </p>
+                )}
+              </div>
+
+              {/* List of Allowed Phone Numbers */}
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 block">
+                    Whitelisted Contact Numbers ({allowedParkingByPhones.length})
+                  </Label>
+                  <span className="text-[11px] text-slate-400 font-medium">Click trash icon to remove</span>
+                </div>
+                {allowedParkingByPhones.length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed border-indigo-200 rounded-xl bg-white/70">
+                    <Phone className="mx-auto text-slate-300 mb-2" size={28} />
+                    <p className="text-sm font-semibold text-slate-600">No phone numbers currently allowed.</p>
+                    <p className="text-xs text-slate-400 mt-1">Use the box above to add phone numbers.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {allowedParkingByPhones.map((phone) => (
+                      <div
+                        key={phone}
+                        className="flex items-center justify-between p-3.5 bg-white border border-indigo-100 rounded-xl shadow-xs hover:border-indigo-300 hover:shadow-sm transition-all"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                            <Phone size={15} />
+                          </div>
+                          <div>
+                            <span className="text-sm font-bold text-slate-900 block font-mono tracking-wide">
+                              +91 {phone}
+                            </span>
+                            <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100">
+                              Active
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAllowedPhone(phone)}
+                          disabled={isSavingAllowedPhones}
+                          title="Delete this number"
+                          className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Coming Soon Mode Toggle */}
             <div className={`rounded-xl shadow-sm border p-6 transition-all duration-200 ${
               comingSoonMode 
