@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { motion } from "framer-motion";
 
 interface SpotlyPreloaderProps {
@@ -8,17 +8,11 @@ interface SpotlyPreloaderProps {
 export default function SpotlyPreloader({
   fullScreen = true,
 }: SpotlyPreloaderProps) {
-  const [overlayOpacity, setOverlayOpacity] = useState(0);
   return (
     <div
       className={`${
         fullScreen ? "fixed inset-0 z-[99999] pointer-events-auto" : "w-full h-full min-h-[300px]"
       } flex flex-col items-center justify-center select-none overflow-hidden font-sans`}
-      onClick={() => {
-        if (typeof window !== 'undefined' && window.innerWidth >= 768) {
-          setOverlayOpacity(prev => prev === 0 ? 0.15 : 0);
-        }
-      }}
       style={{
         background: "linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%)",
       }}
@@ -28,8 +22,6 @@ export default function SpotlyPreloader({
       <div className="absolute top-[-10%] right-[-10%] w-[320px] h-[320px] bg-purple-500/20 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-[-10%] left-[-10%] w-[320px] h-[320px] bg-indigo-600/25 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Dynamic dark overlay */}
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundColor: `rgba(0,0,0,${overlayOpacity})` }}></div>
       {/* Subtle background micro-dots grid */}
       <div
         className="absolute inset-0 pointer-events-none select-none opacity-15"

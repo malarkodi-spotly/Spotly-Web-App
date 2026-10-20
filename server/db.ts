@@ -1,10 +1,10 @@
-// Drizzle ORM database connection using PostgreSQL
-import { drizzle } from "drizzle-orm/node-postgres";
-import { Pool } from "pg";
-import * as schema from "../shared/schema";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-});
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL environment variable is not set");
+}
 
-export const db = drizzle(pool, { schema });
+const client = postgres(connectionString);
+export const db = drizzle(client);

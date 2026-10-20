@@ -1,8 +1,10 @@
-import path from "path";
-import dotenv from "dotenv";
+import dotenv from 'dotenv';
+import path from 'path';
 
-// Load environment variables from .env at project root
-dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+const nodeEnv = process.env.NODE_ENV || 'development';
 
-// Export env (optional)
-export const env = process.env;
+// Load variables from files (first loaded wins, so load in order of highest to lowest precedence)
+dotenv.config({ path: path.resolve(process.cwd(), `.env.${nodeEnv}.local`) });
+dotenv.config({ path: path.resolve(process.cwd(), `.env.${nodeEnv}`) });
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
