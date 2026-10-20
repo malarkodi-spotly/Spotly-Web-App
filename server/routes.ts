@@ -59,6 +59,20 @@ async function sendSMS(mobile: string, otp: string): Promise<boolean> {
     console.log(`SMS API Response: ${responseText}`);
 
     // Check if SMS was sent successfully
+    // Development fallback: write OTP to local file and log it
+    if (!INSTANTALERTS_CONFIG.apiKey) {
+      const debugMsg = `⚡️ OTP for ${cleanMobile}: ${otp} (SMS not sent – using local fallback)`;
+      console.log(debugMsg);
+      try {
+        const logPath = path.resolve(process.cwd(), "server", "otp_debug.log");
+        const fs = require("fs");
+        fs.appendFileSync(logPath, `${new Date().toISOString()} - ${debugMsg}\n`);
+      } catch (e) {
+        console.error("Failed to write OTP to debug log:", e);
+      }
+      return true;
+    }
+
     if (response.ok && !responseText.toLowerCase().includes("error")) {
       console.log(`OTP SMS sent successfully to ${cleanMobile}`);
       return true;
@@ -630,13 +644,21 @@ export async function registerRoutes(
 
       console.log(`OTP for ${data.mobile}: ${otp} (SMS sent: ${smsSent})`);
 
-      res.json({
+      const responsePayload: any = {
         success: true,
         message: smsSent ? "OTP sent" : "OTP generated",
         userId: user?.id,
         mobile: data.mobile,
         isNewUser,
-      });
+      };
+
+      // If SMS wasn't actually sent (e.g., missing API key), include the OTP in the JSON
+      // so the front‑end/dev can display it for testing.
+      if (!smsSent) {
+        responsePayload.otp = otp;
+      }
+
+      res.json(responsePayload);
     } catch (error) {
       console.error("🔥 Login Route Error:", error);
       if (error instanceof z.ZodError) {
@@ -2410,11 +2432,15 @@ export async function registerRoutes(
           if (user) ownerMap[id] = { name: user.name || "Space Owner", phone: user.mobile || "" };
         } catch { }
       }));
-      const enriched = bookingsList.map(b => ({
-        ...b,
-        ownerName: ownerMap[b.customerId]?.name || "Space Owner",
-        ownerPhone: ownerMap[b.customerId]?.phone || "",
-      }));
+      const enriched = bookingsList.map(b => {
+        const contactMatch = b.comments?.match(/(?:Contact|Mobile|Phone):\s*([0-9]{10})/i);
+        const customPhone = contactMatch ? contactMatch[1] : "";
+        return {
+          ...b,
+          ownerName: ownerMap[b.customerId]?.name || "Space Owner",
+          ownerPhone: customPhone || ownerMap[b.customerId]?.phone || "",
+        };
+      });
       res.json({ bookings: enriched, total });
     } catch (error) {
       console.error("Get pending bookings error:", error);
@@ -2986,10 +3012,19 @@ export async function registerRoutes(
     }
   });
 
-  // Public: Get app setting (for contact hours)
+  // Public: Get app setting (for contact hours, whitelist, etc.)
   app.get("/api/settings/:key", async (req, res) => {
     try {
       const setting = await storage.getSetting(req.params.key);
+      if (!setting && req.params.key === "parking_by_allowed_phones") {
+        return res.json({
+          setting: {
+            key: "parking_by_allowed_phones",
+            value: JSON.stringify(["7829551049", "9742545584", "7338507767", "9180532078"]),
+            description: "Allowed phone numbers for Parking By (Owner / Spotly) field",
+          },
+        });
+      }
       res.json({ setting: setting || null });
     } catch (error) {
       console.error("Get setting error:", error);

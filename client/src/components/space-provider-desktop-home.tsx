@@ -41,6 +41,7 @@ import {
   LogIn,
   CheckCircle2,
   MessageSquare,
+  EyeOff,
 } from "lucide-react";
 import { useAuthGuard } from "@/contexts/auth-guard";
 import { isGuest } from "@/lib/guest";
@@ -68,6 +69,7 @@ export interface ProviderSpaceItem {
   locationShort?: string;
   rent: number;
   rentUnit?: string;
+  isPriceHidden?: boolean;
   status: "Active" | "Pending" | "Inactive";
   occupancyPercent: number | null;
   photoUrl: string;
@@ -241,7 +243,8 @@ export default function SpaceProviderDesktopHome({
 
     const parsedReal = myBookings.map((b: any, index: number) => {
       const rentMatch = b.comments?.match(/Rent:\s*₹?(\d+)\/?(\w+)?/i);
-      const rentAmount = rentMatch ? parseInt(rentMatch[1], 10) : (b.totalAmount || 5000);
+      const isPriceHidden = Boolean(b.comments?.includes("Rent: Hidden") || b.comments?.includes("Price: Hidden") || !rentMatch);
+      const rentAmount = rentMatch ? parseInt(rentMatch[1], 10) : 0;
       const rentUnit = rentMatch && rentMatch[2] ? rentMatch[2] : "month";
 
       const durationMatch = b.comments?.match(/\|\s*Duration:\s*([^|\[]+)/i);
@@ -309,6 +312,7 @@ export default function SpaceProviderDesktopHome({
         locationShort: locationShort,
         rent: rentAmount,
         rentUnit: rentUnit,
+        isPriceHidden,
         status: (b.status === "pending" ? "Pending" : "Active") as "Active" | "Pending",
         occupancyPercent: b.status === "pending" ? null : 75,
         photoUrl: allPhotos[0],
@@ -640,9 +644,16 @@ export default function SpaceProviderDesktopHome({
                                 {/* Badges Row (Rent + Duration + Vehicle Spec + Slots) */}
                                 <div className="flex items-center gap-2 flex-wrap pt-0.5">
                                   {/* Rent Pill */}
-                                  <span className="bg-[#E7FAEE] text-[#10B981] text-xs font-black px-3 py-1 rounded-full border border-[#10B981]/20 shadow-2xs">
-                                    ₹{space.rent ? space.rent.toLocaleString() : "1"}/{space.rentUnit || "month"}
-                                  </span>
+                                  {!space.isPriceHidden && space.rent && space.rent > 0 ? (
+                                    <span className="bg-[#E7FAEE] text-[#10B981] text-xs font-black px-3 py-1 rounded-full border border-[#10B981]/20 shadow-2xs">
+                                      ₹{space.rent.toLocaleString()}/{space.rentUnit || "month"}
+                                    </span>
+                                  ) : (
+                                    <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200/90 inline-flex items-center gap-1 shadow-2xs">
+                                      <EyeOff size={11} className="text-slate-500" />
+                                      Price Hidden
+                                    </span>
+                                  )}
 
 
                                   {/* Vehicle Spec Pill */}
@@ -775,7 +786,10 @@ export default function SpaceProviderDesktopHome({
               <div className="w-full">
                 <SpaceProviderDesktopPostSpace
                   embedMode={true}
+                  showParkingBy={postForm.showParkingBy}
                   onSuccess={() => handleTabChange("my-spaces")}
+                  contactPhone={postForm.contactPhone}
+                  setContactPhone={postForm.setContactPhone}
                   photos={postForm.photos}
                   onPhotoUpload={postForm.handlePhotoUpload}
                   onRemovePhoto={postForm.removePhoto}
@@ -1455,7 +1469,7 @@ export default function SpaceProviderDesktopHome({
                 </div>
                 <h3 className="text-lg font-black text-slate-900 mb-1">Delete This Space?</h3>
                 {/* Confirmation Reason Options */}
-                <div className="space-y-2 mb-3.5 text-left">
+                <div className="space-y-2.5 mb-3.5 text-left">
                   {DELETE_SPACE_REASONS.map((reason) => {
                     const isSelected = selectedDeleteReason === reason.id;
                     return (
@@ -1463,18 +1477,20 @@ export default function SpaceProviderDesktopHome({
                         key={reason.id}
                         type="button"
                         onClick={() => setSelectedDeleteReason(reason.id)}
-                        className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border text-xs transition-all text-left cursor-pointer ${isSelected
-                          ? "border-rose-500 bg-rose-50/70 text-rose-950 font-bold ring-1 ring-rose-500/20 shadow-xs"
-                          : "border-slate-200/80 bg-slate-50/50 hover:bg-slate-100/70 text-slate-700 font-medium"
-                          }`}
+                        className={`w-full flex items-center gap-3 py-3 px-4 rounded-full border text-xs sm:text-sm transition-all text-left cursor-pointer ${
+                          isSelected
+                            ? "border-rose-500 bg-rose-50/70 text-rose-950 font-bold ring-1 ring-rose-500/20 shadow-xs"
+                            : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium"
+                        }`}
                       >
                         <span
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${isSelected ? "border-rose-600 bg-rose-600" : "border-slate-300 bg-white"
-                            }`}
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${
+                            isSelected ? "border-rose-600 bg-rose-600" : "border-slate-300 bg-white"
+                          }`}
                         >
                           {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                         </span>
-                        <span className="flex-1 text-[11.5px] leading-snug">{reason.label}</span>
+                        <span className="flex-1 text-xs sm:text-sm leading-snug">{reason.label}</span>
                       </button>
                     );
                   })}
@@ -1485,14 +1501,14 @@ export default function SpaceProviderDesktopHome({
                       placeholder="Please specify reason (optional)"
                       value={otherDeleteReason}
                       onChange={(e) => setOtherDeleteReason(e.target.value)}
-                      className="w-full mt-1.5 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white text-slate-800"
+                      className="w-full mt-1.5 px-4 py-2.5 text-xs sm:text-sm rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white text-slate-800"
                       maxLength={100}
                     />
                   )}
                 </div>
 
                 {!selectedDeleteReason && (
-                  <p className="text-[11px] text-amber-600 font-medium mb-3 flex items-center justify-center gap-1">
+                  <p className="text-[11px] sm:text-xs text-amber-600 font-medium mb-3.5 flex items-center justify-center gap-1">
                     <span>⚠️</span> Please select an option above to confirm
                   </p>
                 )}
@@ -1506,7 +1522,7 @@ export default function SpaceProviderDesktopHome({
                       setOtherDeleteReason("");
                     }}
                     disabled={isDeleting}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all cursor-pointer"
+                    className="flex-1 py-3 px-4 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-bold transition-all cursor-pointer"
                   >
                     Cancel
                   </button>
@@ -1535,9 +1551,9 @@ export default function SpaceProviderDesktopHome({
                       }
                     }}
                     disabled={isDeleting || !selectedDeleteReason}
-                    className="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-md shadow-rose-600/20 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="flex-1 py-3 px-4 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-rose-500/20 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Trash2 size={14} />
+                    <Trash2 size={16} />
                     {isDeleting ? "Deleting..." : selectedDeleteReason ? "Yes, Delete" : "Select Option"}
                   </button>
                 </div>

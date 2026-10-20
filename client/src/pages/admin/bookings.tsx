@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { adminFetch } from "@/lib/api-config";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { adminFetch, getApiUrl } from "@/lib/api-config";
 import { 
   Globe,
   MapPin, 
@@ -22,9 +24,11 @@ import {
   Trash2,
   X,
   ChevronLeft,
-  ChevronRight,
   Image as ImageIcon,
   Navigation,
+  Plus,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import logo from "@assets/Logos/spotly_full-white.png";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -97,6 +101,11 @@ export default function AdminBookings() {
   const [location, setLocation] = useLocation();
   const [spaces, setSpaces] = useState<ParkingSpace[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showAllowedPhonesModal, setShowAllowedPhonesModal] = useState(false);
+  const [allowedParkingByPhones, setAllowedParkingByPhones] = useState<string[]>([]);
+  const [newAllowedPhone, setNewAllowedPhone] = useState("");
+  const [isSavingAllowedPhones, setIsSavingAllowedPhones] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [cityToStateMap, setCityToStateMap] = useState<Map<string, string>>(new Map());
@@ -220,6 +229,26 @@ export default function AdminBookings() {
         }));
         setSpaces(enrichedSpaces);
       }
+
+      // Fetch Parking By allowed phones
+      try {
+        const allowedPhonesRes = await fetch(getApiUrl("/api/settings/parking_by_allowed_phones"));
+        if (allowedPhonesRes.ok) {
+          const d = await allowedPhonesRes.json();
+          if (d.setting && d.setting.value !== undefined && d.setting.value !== null) {
+            try {
+              const parsed = JSON.parse(d.setting.value);
+              if (Array.isArray(parsed)) {
+                setAllowedParkingByPhones(parsed.map((p: string) => String(p).trim().replace(/\D/g, "").slice(-10)).filter(Boolean));
+              }
+            } catch {
+              setAllowedParkingByPhones(["7829551049", "9742545584", "7338507767", "9180532078"]);
+            }
+          } else {
+            setAllowedParkingByPhones(["7829551049", "9742545584", "7338507767", "9180532078"]);
+          }
+        }
+      } catch (err) { }
     } catch (error) {
       console.error("Failed to fetch parking spaces:", error);
     } finally {
@@ -232,6 +261,47 @@ export default function AdminBookings() {
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminLevel");
     setLocation("/admin");
+  };
+
+  const handleAddAllowedPhone = async () => {
+    setPhoneError("");
+    const clean = newAllowedPhone.trim().replace(/\D/g, "").slice(-10);
+    if (!clean || clean.length !== 10) {
+      setPhoneError("Please enter a valid 10-digit mobile number.");
+      return;
+    }
+    if (allowedParkingByPhones.includes(clean)) {
+      setPhoneError("This number is already in the allowed list.");
+      return;
+    }
+    const updated = [...allowedParkingByPhones, clean];
+    setAllowedParkingByPhones(updated);
+    setNewAllowedPhone("");
+    await saveAllowedParkingByPhones(updated);
+  };
+
+  const handleDeleteAllowedPhone = async (phoneToDelete: string) => {
+    const updated = allowedParkingByPhones.filter((p) => p !== phoneToDelete);
+    setAllowedParkingByPhones(updated);
+    await saveAllowedParkingByPhones(updated);
+  };
+
+  const saveAllowedParkingByPhones = async (list: string[]) => {
+    setIsSavingAllowedPhones(true);
+    try {
+      await adminFetch("/api/admin/settings", {
+        method: "POST",
+        body: JSON.stringify({
+          key: "parking_by_allowed_phones",
+          value: JSON.stringify(list),
+          description: "Allowed phone numbers for Parking By (Owner / Spotly) field",
+        }),
+      });
+    } catch (err) {
+      console.error("Error saving allowed phones:", err);
+    } finally {
+      setIsSavingAllowedPhones(false);
+    }
   };
 
   const getSpaceState = (space: ParkingSpace) => {
@@ -338,6 +408,132 @@ export default function AdminBookings() {
         onCancel={() => setDeletePhotoConfirm({ show: false, spaceId: "", photoUrl: "" })}
       />
 
+      {showAllowedPhonesModal && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 cursor-pointer"
+          onClick={() => setShowAllowedPhonesModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl cursor-default animate-in fade-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-4 border-b mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600">
+                  <Phone size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">
+                    Allowed Phone Numbers ({allowedParkingByPhones.length})
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Only these numbers can see &quot;Parking By (Instant Owner / Spotly)&quot;
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAllowedPhonesModal(false)}
+                className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Add Number Input */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5">
+              <Label className="text-xs font-bold text-slate-700 mb-1.5 block">
+                Add New Allowed Phone Number
+              </Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">
+                    +91
+                  </span>
+                  <Input
+                    type="tel"
+                    maxLength={10}
+                    placeholder="Enter 10-digit number"
+                    value={newAllowedPhone}
+                    onChange={(e) => {
+                      setPhoneError("");
+                      setNewAllowedPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddAllowedPhone();
+                      }
+                    }}
+                    className="pl-12 bg-white font-semibold"
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={handleAddAllowedPhone}
+                  disabled={isSavingAllowedPhones || !newAllowedPhone.trim()}
+                  className="bg-[#3b2fad] hover:bg-[#322794] text-white shrink-0 font-bold"
+                >
+                  {isSavingAllowedPhones ? (
+                    <Loader2 size={16} className="animate-spin mr-1.5" />
+                  ) : (
+                    <Plus size={16} className="mr-1.5" />
+                  )}
+                  Add
+                </Button>
+              </div>
+              {phoneError && (
+                <p className="text-xs font-semibold text-red-600 mt-2 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  {phoneError}
+                </p>
+              )}
+            </div>
+
+            {/* Allowed Numbers List */}
+            <Label className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2.5 block">
+              Configured Allowed Numbers
+            </Label>
+            <div className="max-h-60 overflow-y-auto space-y-2 pr-1 mb-6">
+              {allowedParkingByPhones.map((phone) => (
+                <div
+                  key={phone}
+                  className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl hover:border-indigo-200"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <Phone size={14} />
+                    </div>
+                    <span className="text-sm font-bold text-slate-900 font-mono">
+                      +91 {phone}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAllowedPhone(phone)}
+                    disabled={isSavingAllowedPhones}
+                    title="Delete number"
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setShowAllowedPhonesModal(false)}
+                className="cursor-pointer"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto p-6">
         <nav className="flex gap-2 mb-6 overflow-x-auto pb-2 scroll-smooth no-scrollbar">
           {navItems.map((item) => (
@@ -356,9 +552,22 @@ export default function AdminBookings() {
         </nav>
 
         <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 mb-6">
-          <h2 className="text-xl font-bold text-neutral-800" data-testid="text-page-title">
-            {isSpotlyView ? `By Spotly Spaces (${filteredSpaces.length})` : `By Owner Spaces (${filteredSpaces.length})`}
-          </h2>
+          <div className="flex items-center gap-3 flex-wrap">
+            <h2 className="text-xl font-bold text-neutral-800" data-testid="text-page-title">
+              {isSpotlyView ? `By Spotly Spaces (${filteredSpaces.length})` : `By Owner Spaces (${filteredSpaces.length})`}
+            </h2>
+            {isSpotlyView && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllowedPhonesModal(true)}
+                className="bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 font-semibold gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Phone size={14} />
+                Manage Allowed Numbers ({allowedParkingByPhones.length})
+              </Button>
+            )}
+          </div>
           <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center flex-wrap">
             <div className="relative flex-1 sm:w-64">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
