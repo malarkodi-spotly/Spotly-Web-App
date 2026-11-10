@@ -2,7 +2,7 @@ import { useLocation } from "wouter";
 import heroCardImg from "@assets/hero-card-2.png";
 import MobileLayout from "@/components/layout/mobile-layout";
 import SpotlyPreloader from "@/components/spotly-preloader";
-import { Bell, Phone, MapPin, Check, CheckCircle2, Calendar, User, Loader2, ChevronDown, ChevronLeft, ChevronRight, Map, Navigation, X, Car, Bike, Rocket, Mail, Plus, ParkingCircle, ParkingSquare, Trash2, Pencil, Clock, ThumbsUp, IndianRupee, Wallet, TrendingUp, BadgeDollarSign, CircleDollarSign, Banknote, Sparkles, ArrowRight, Star, Image as ImageIcon, MoreVertical, AlertTriangle, Heart } from "lucide-react";
+import { Bell, Phone, MapPin, Check, CheckCircle2, Calendar, User, Loader2, ChevronDown, ChevronLeft, ChevronRight, Map, Navigation, X, Car, Bike, Rocket, Mail, Plus, ParkingCircle, ParkingSquare, Trash2, Pencil, Clock, ThumbsUp, IndianRupee, Wallet, TrendingUp, BadgeDollarSign, CircleDollarSign, Banknote, Sparkles, ArrowRight, Star, Image as ImageIcon, MoreVertical, AlertTriangle, Heart, EyeOff } from "lucide-react";
 import { getApiUrl } from "@/lib/api-config";
 import { triggerLocationPermissionError } from "@/lib/location-error";
 import { isGuest } from "@/lib/guest";
@@ -83,9 +83,6 @@ const findMatchingCity = (citiesList: City[], cityName: string = "", stateName: 
 
 export const DELETE_SPACE_REASONS = [
   { id: "rented", label: "Space already rented / occupied" },
-  { id: "temporary", label: "Temporarily unavailable / Maintenance" },
-  { id: "pricing", label: "Updating pricing or details" },
-  { id: "no_longer", label: "No longer renting this space" },
   { id: "other", label: "Other reason" },
 ];
 
@@ -1577,6 +1574,7 @@ export default function CustomerHome() {
               {myBookings.map((booking: any) => {
                 const iconType = getParkingIcon(booking.serviceName);
                 const rentMatch = booking.comments?.match(/Rent: ₹(\d+)\/?(\w+)?/);
+                const isPriceHidden = Boolean(booking.comments?.includes("Rent: Hidden") || booking.comments?.includes("Price: Hidden") || !rentMatch);
                 const rentAmount = rentMatch ? rentMatch[1] : null;
                 const rentUnit = rentMatch ? (rentMatch[2] || "month") : "month";
                 const durationMatch = booking.comments?.match(/\|\s*Duration:\s*([^|\[]+)/i);
@@ -1718,9 +1716,16 @@ export default function CustomerHome() {
 
                         {/* Badges Row (Rent + Duration + Vehicle Spec) */}
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="bg-[#E7FAEE] text-[#10B981] text-xs font-black px-3 py-1 rounded-full border border-[#10B981]/20">
-                            ₹{rentAmount || "1"}/{rentUnit}
-                          </span>
+                          {!isPriceHidden && rentAmount && Number(rentAmount) > 0 ? (
+                            <span className="bg-[#E7FAEE] text-[#10B981] text-xs font-black px-3 py-1 rounded-full border border-[#10B981]/20">
+                              ₹{rentAmount}/{rentUnit}
+                            </span>
+                          ) : (
+                            <span className="bg-slate-100 text-slate-700 text-xs font-bold px-2.5 py-1 rounded-full border border-slate-200/90 inline-flex items-center gap-1 shadow-2xs">
+                              <EyeOff size={11} className="text-slate-500" />
+                              Price Hidden
+                            </span>
+                          )}
                           {vehicleSizeText && (
                             <span className="bg-[#ECEBFF] text-[#241e98] text-[11px] font-black px-3 py-1 rounded-full border border-[#241e98]/20 flex items-center gap-1">
                               <Car size={11} />
@@ -1728,23 +1733,6 @@ export default function CustomerHome() {
                             </span>
                           )}
                         </div>
-                        {/* Get Directions Button */}
-                        <button
-                          className="ml-auto text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                          onClick={() => {
-                            const lat = booking.latitude;
-                            const lng = booking.longitude;
-                            const url = lat && lng
-                              ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
-                              : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.location || '')}`;
-                            window.open(url, "_blank");
-                          }}
-                          aria-label="Get directions"
-                          data-testid={`button-directions-${booking.id}`}
-                        >
-                          <MapPin size={14} />
-                          <span>Directions</span>
-                        </button>
                         {/* Date & Time Slot row — shown when present */}
                         {(dateText || timeText) && (
                           <div className="flex items-center gap-1.5 mt-2 text-[11px] font-bold text-slate-500 flex-wrap">
@@ -2110,16 +2098,13 @@ export default function CustomerHome() {
                   </motion.div>
                 ) : (
                   <div>
-                    <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3 shadow-xs border border-rose-200/50">
-                      <Trash2 size={26} />
+                    <div className="w-14 h-14 rounded-2xl bg-rose-50 text-rose-500 flex items-center justify-center mx-auto mb-3 border border-rose-100">
+                      <Trash2 size={24} />
                     </div>
-                    <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-1">Delete This Space?</h3>
-                    <p className="text-slate-500 text-xs leading-relaxed mb-3.5">
-                      Please select a confirmation option below before deleting. This action cannot be undone and your listing will be removed immediately.
-                    </p>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-900 mb-3.5">Delete This Space?</h3>
 
                     {/* Confirmation Reason Options */}
-                    <div className="space-y-2 mb-3.5 text-left">
+                    <div className="space-y-2.5 mb-3.5 text-left">
                       {DELETE_SPACE_REASONS.map((reason) => {
                         const isSelected = selectedDeleteReason === reason.id;
                         return (
@@ -2127,10 +2112,10 @@ export default function CustomerHome() {
                             key={reason.id}
                             type="button"
                             onClick={() => setSelectedDeleteReason(reason.id)}
-                            className={`w-full flex items-center gap-2.5 p-2.5 rounded-xl border text-xs transition-all text-left ${
+                            className={`w-full flex items-center gap-3 py-3 px-4 rounded-full border text-xs sm:text-sm transition-all text-left cursor-pointer ${
                               isSelected
                                 ? "border-rose-500 bg-rose-50/70 text-rose-950 font-bold ring-1 ring-rose-500/20 shadow-xs"
-                                : "border-slate-200/80 bg-slate-50/50 hover:bg-slate-100/70 text-slate-700 font-medium"
+                                : "border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-medium"
                             }`}
                           >
                             <span
@@ -2140,7 +2125,7 @@ export default function CustomerHome() {
                             >
                               {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
                             </span>
-                            <span className="flex-1 text-[11.5px] leading-snug">{reason.label}</span>
+                            <span className="flex-1 text-xs sm:text-sm leading-snug">{reason.label}</span>
                           </button>
                         );
                       })}
@@ -2151,14 +2136,14 @@ export default function CustomerHome() {
                           placeholder="Please specify reason (optional)"
                           value={otherDeleteReason}
                           onChange={(e) => setOtherDeleteReason(e.target.value)}
-                          className="w-full mt-1.5 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white text-slate-800"
+                          className="w-full mt-1.5 px-4 py-2.5 text-xs sm:text-sm rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 bg-white text-slate-800"
                           maxLength={100}
                         />
                       )}
                     </div>
 
                     {!selectedDeleteReason && (
-                      <p className="text-[11px] text-amber-600 font-medium mb-3 flex items-center justify-center gap-1">
+                      <p className="text-[11px] sm:text-xs text-amber-600 font-medium mb-3.5 flex items-center justify-center gap-1">
                         <span>⚠️</span> Please select an option above to confirm
                       </p>
                     )}
@@ -2173,7 +2158,7 @@ export default function CustomerHome() {
                           setOtherDeleteReason("");
                         }}
                         disabled={isDeleting}
-                        className="flex-1 py-3 px-4 bg-slate-100 text-slate-700 font-extrabold text-xs rounded-2xl hover:bg-slate-200 transition-all active:scale-95 disabled:opacity-50 border border-slate-200/60"
+                        className="flex-1 py-3 px-4 rounded-full border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs sm:text-sm font-bold transition-all cursor-pointer"
                         data-testid="button-keep-space"
                       >
                         Cancel
@@ -2182,7 +2167,7 @@ export default function CustomerHome() {
                         type="button"
                         onClick={() => handleDeleteSpace(deleteConfirm)}
                         disabled={isDeleting || !selectedDeleteReason}
-                        className="flex-1 py-3 px-4 bg-rose-600 text-white font-extrabold text-xs rounded-2xl hover:bg-rose-700 shadow-lg shadow-rose-600/30 transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center gap-2"
+                        className="flex-1 py-3 px-4 rounded-full bg-rose-500 hover:bg-rose-600 text-white text-xs sm:text-sm font-bold transition-all shadow-md shadow-rose-500/20 cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                         data-testid="button-confirm-delete"
                       >
                         {isDeleting ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}

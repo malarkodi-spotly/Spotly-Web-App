@@ -35,8 +35,10 @@ import {
   Mail,
   LogOut,
   Bell,
+  EyeOff,
 } from "lucide-react";
 import { isGuest } from "@/lib/guest";
+import { isAllowedPhone, useAllowedParkingByPhones } from "@/lib/allowedPhones";
 
 interface ParkingTypeOption {
   id: string;
@@ -52,6 +54,7 @@ interface SpaceProviderDesktopPostSpaceProps {
   setParkingDuration: (val: string) => void;
   isPublicRoadside?: boolean;
   setIsPublicRoadside?: (val: boolean) => void;
+  showParkingBy?: boolean;
   needsDateTime?: boolean;
   startDate: string;
   setStartDate: (val: string) => void;
@@ -73,6 +76,8 @@ interface SpaceProviderDesktopPostSpaceProps {
   onOpenMapPicker: () => void;
   rent: string;
   setRent: (val: string) => void;
+  contactPhone?: string;
+  setContactPhone?: (val: string) => void;
   description: string;
   setDescription: (val: string) => void;
   isFormValid: boolean;
@@ -94,6 +99,7 @@ export default function SpaceProviderDesktopPostSpace({
   setParkingDuration,
   isPublicRoadside = false,
   setIsPublicRoadside,
+  showParkingBy: showParkingByProp,
   needsDateTime,
   startDate,
   setStartDate,
@@ -114,6 +120,8 @@ export default function SpaceProviderDesktopPostSpace({
   onOpenMapPicker,
   rent,
   setRent,
+  contactPhone,
+  setContactPhone,
   description,
   setDescription,
   isFormValid,
@@ -130,6 +138,22 @@ export default function SpaceProviderDesktopPostSpace({
   const [showSupportModal, setShowSupportModal] = useState(false);
   const [showSeekerLogoutConfirm, setShowSeekerLogoutConfirm] = useState(false);
   const [showCitySelector, setShowCitySelector] = useState(false);
+  const [internalPhone, setInternalPhone] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("userMobile") || "";
+      return saved.replace(/\D/g, "").slice(-10);
+    }
+    return "";
+  });
+
+  const activeContactPhone = typeof contactPhone === "string" ? contactPhone : internalPhone;
+  const handleContactPhoneChange = (val: string) => {
+    const digits = val.replace(/\D/g, "").slice(0, 10);
+    setInternalPhone(digits);
+    if (setContactPhone) {
+      setContactPhone(digits);
+    }
+  };
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isClearingNotifications, setIsClearingNotifications] = useState(false);
@@ -140,6 +164,11 @@ export default function SpaceProviderDesktopPostSpace({
     localStorage.getItem("selectedServiceAreaName") ||
     "Bengaluru";
   const userState = localStorage.getItem("userSelectedState") || "Karnataka";
+  const userMobile = typeof window !== "undefined" ? localStorage.getItem("userMobile") || "" : "";
+  const { allowedPhones } = useAllowedParkingByPhones();
+  const showParkingBy = showParkingByProp !== undefined ? showParkingByProp : isAllowedPhone(userMobile, allowedPhones);
+  const isInstantOwner = showParkingBy && !isPublicRoadside;
+  const isDefaultOwner = !showParkingBy && !isPublicRoadside;
 
   useEffect(() => {
     const uid = localStorage.getItem("userId");
@@ -231,10 +260,14 @@ export default function SpaceProviderDesktopPostSpace({
       return Math.round((filled / 3) * 100);
     }
     if (parkingDuration) filled++;
-    if (rent.trim()) filled++;
+    if (isDefaultOwner) {
+      if (rent.trim()) filled++;
+    } else if (isInstantOwner) {
+      if (activeContactPhone && activeContactPhone.length === 10) filled++;
+    }
     if (description.trim()) filled++;
     return Math.round((filled / 6) * 100);
-  }, [photos, address, parkingDuration, parkingType, rent, description, isPublicRoadside]);
+  }, [photos, address, parkingDuration, parkingType, rent, activeContactPhone, description, isPublicRoadside, isDefaultOwner, isInstantOwner]);
 
   const progressLabel = useMemo(() => {
     if (progressPercent === 100) return "Ready to post!";
@@ -631,11 +664,12 @@ export default function SpaceProviderDesktopPostSpace({
                 </div>
               </div>
 
-              {/* 4. Parking By (Owner / Spotly) Section */}
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
+              {/* 4. Parking By (Owner / Spotly) Section (Allowed numbers only) */}
+              {showParkingBy && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-slate-800 flex items-center gap-1">
-                    <span>Parking By (Owner / Spotly)</span>
+                    <span>Parking By (Instant Owner / Spotly)</span>
                     <span className="text-red-500">*</span>
                   </label>
                   <span
@@ -645,7 +679,7 @@ export default function SpaceProviderDesktopPostSpace({
                         : "bg-indigo-50 text-[#3b2fad] border-indigo-200"
                     }`}
                   >
-                    {isPublicRoadside ? "By Spotly (Public)" : "Space Owner (Usual Form)"}
+                    {isPublicRoadside ? "By Spotly (Public)" : "Instant Owner (Usual Form)"}
                   </span>
                 </div>
 
@@ -689,7 +723,7 @@ export default function SpaceProviderDesktopPostSpace({
                         <div>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900">
-                              Space Owner
+                              Instant Owner
                             </span>
                             <span
                               className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
@@ -719,7 +753,7 @@ export default function SpaceProviderDesktopPostSpace({
                     </div>
 
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      List private space as usual. Set your custom rent, duration, and amenities.
+                      List private space as Instant Owner. Set your custom rent, duration, and amenities.
                     </p>
                   </div>
 
@@ -810,6 +844,7 @@ export default function SpaceProviderDesktopPostSpace({
                   </div>
                 </div>
               </div>
+              )}
 
               {/* 5. Parking Duration Section (Hidden when Public Roadside is selected) */}
               {!isPublicRoadside && (
@@ -947,8 +982,8 @@ export default function SpaceProviderDesktopPostSpace({
                 )}
               </div>
 
-              {/* 7. Monthly Rent Section (Hidden when Public Roadside is selected) */}
-              {!isPublicRoadside && (
+              {/* 7A. Rent / Price Section (Default Space Owner) */}
+              {isDefaultOwner && (
                 <div className="space-y-2.5">
                   <label className="text-sm font-bold text-slate-800 flex items-center gap-1">
                     <span>
@@ -974,29 +1009,6 @@ export default function SpaceProviderDesktopPostSpace({
                         inputMode="numeric"
                         pattern="[0-9]*"
                         value={rent}
-                        onKeyDown={(e) => {
-                          if (
-                            ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key) ||
-                            e.ctrlKey ||
-                            e.metaKey
-                          ) {
-                            return;
-                          }
-                          if (!/^\d$/.test(e.key)) {
-                            e.preventDefault();
-                            return;
-                          }
-                          const target = e.currentTarget;
-                          const isTextSelected = (target.selectionEnd ?? 0) - (target.selectionStart ?? 0) > 0;
-                          if (target.value.length >= 4 && !isTextSelected) {
-                            e.preventDefault();
-                          }
-                        }}
-                        onPaste={(e) => {
-                          e.preventDefault();
-                          const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
-                          setRent(pasted);
-                        }}
                         onChange={(e) => {
                           const val = e.target.value.replace(/\D/g, "").slice(0, 4);
                           setRent(val);
@@ -1004,10 +1016,11 @@ export default function SpaceProviderDesktopPostSpace({
                         maxLength={4}
                         placeholder="e.g. 2500"
                         className="w-full px-3 text-lg font-bold text-slate-900 placeholder:text-slate-300 outline-none bg-transparent"
+                        data-testid="input-rent-desktop"
                       />
                     </div>
 
-                    {/* Unit Dropdown */}
+                    {/* Unit Dropdown / Indicator */}
                     <div className="px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 shrink-0 select-none">
                       {currentDurationKey === "Hourly"
                         ? "/ hour"
@@ -1015,6 +1028,49 @@ export default function SpaceProviderDesktopPostSpace({
                         ? "/ day"
                         : "/ month"}
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 7B. Contact Mobile Number (Instant Owner only) */}
+              {isInstantOwner && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-bold text-slate-800 flex items-center gap-1">
+                      <span>Contact Mobile Number</span>
+                      <span className="text-red-500">*</span>
+                    </label>
+                    <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                      Visible to Seekers
+                    </span>
+                  </div>
+
+                  <div className="relative flex items-center bg-white border border-slate-200 focus-within:border-[#3b2fad] focus-within:ring-2 focus-within:ring-indigo-100 rounded-xl p-2.5 transition-all">
+                    <div
+                      style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%)" }}
+                      className="w-8 h-8 rounded-full text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs shadow-[#3b2fad]/20"
+                    >
+                      <Phone size={14} />
+                    </div>
+                    <div className="px-2 font-bold text-xs text-slate-400 select-none">
+                      +91
+                    </div>
+                    <input
+                      type="tel"
+                      inputMode="numeric"
+                      value={activeContactPhone}
+                      onChange={(e) => handleContactPhoneChange(e.target.value)}
+                      maxLength={10}
+                      placeholder="Enter 10-digit mobile number"
+                      className="w-full px-2 text-base font-bold text-slate-900 placeholder:text-slate-300 outline-none bg-transparent"
+                      data-testid="input-contact-phone-desktop"
+                    />
+                    {activeContactPhone && activeContactPhone.length === 10 && (
+                      <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 shrink-0 flex items-center gap-1">
+                        <Check size={11} className="stroke-[3]" />
+                        Valid
+                      </span>
+                    )}
                   </div>
                 </div>
               )}

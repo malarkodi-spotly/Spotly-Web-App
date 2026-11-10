@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { getApiUrl } from "@/lib/api-config";
+import { isAllowedPhone, useAllowedParkingByPhones } from "@/lib/allowedPhones";
 
 export interface ParkingTypeOption {
   id: string;
@@ -15,6 +16,9 @@ export interface UseSpacePostFormOptions {
 
 export function useSpacePostForm(options?: UseSpacePostFormOptions) {
   const queryClient = useQueryClient();
+  const userMobile = typeof window !== "undefined" ? localStorage.getItem("userMobile") || "" : "";
+  const { allowedPhones } = useAllowedParkingByPhones();
+  const showParkingBy = isAllowedPhone(userMobile, allowedPhones);
   const [photos, setPhotos] = useState<string[]>([]);
   const [parkingDuration, setParkingDuration] = useState("Monthly");
   const [startDate, setStartDate] = useState("");
@@ -37,6 +41,13 @@ export function useSpacePostForm(options?: UseSpacePostFormOptions) {
     }
   };
   const [description, setDescription] = useState("");
+  const [contactPhone, setContactPhone] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("userMobile") || "";
+      return saved.replace(/\D/g, "").slice(-10);
+    }
+    return "";
+  });
   const [isPublicRoadside, setIsPublicRoadside] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [showLocationPickerModal, setShowLocationPickerModal] = useState(false);
@@ -116,6 +127,11 @@ export function useSpacePostForm(options?: UseSpacePostFormOptions) {
                 setVehicleSize(sizeMatch[1].trim());
                 commentsNoPhotos = commentsNoPhotos.replace(/\|\s*Vehicle Size:\s*([^|]+)/i, "").replace(/\|\s*Size:\s*([^|]+)/i, "");
               }
+              const contactMatch = commentsNoPhotos.match(/\|\s*(?:Contact|Mobile|Phone):\s*([0-9]{10})/i);
+              if (contactMatch) {
+                setContactPhone(contactMatch[1].trim());
+                commentsNoPhotos = commentsNoPhotos.replace(/\|\s*(?:Contact|Mobile|Phone):\s*([0-9]{10})/i, "");
+              }
               const descMatch = commentsNoPhotos.match(/\|\s*([\s\S]+)$/);
               if (descMatch) {
                 setDescription(descMatch[1].trim());
@@ -137,19 +153,25 @@ export function useSpacePostForm(options?: UseSpacePostFormOptions) {
     return parkingType.toLowerCase().includes("car");
   }, [parkingType]);
 
+  const isInstantOwner = showParkingBy && !isPublicRoadside;
+  const isDefaultOwner = !showParkingBy && !isPublicRoadside;
+
   const missingFields = useMemo(() => {
     const list: string[] = [];
     if (!isPublicRoadside && !parkingDuration) list.push("Parking Duration");
     if (!parkingType) list.push("Parking Type");
     if (!address) list.push("Location");
-    if (!isPublicRoadside && !rent) list.push("Rent Amount");
+    if (isDefaultOwner && (!rent || !rent.trim())) list.push("Rent");
+    if (isInstantOwner && (!contactPhone || contactPhone.length !== 10)) list.push("Contact Mobile Number");
     if (!isPublicRoadside && !description.trim()) list.push("Description");
     return list;
-  }, [isPublicRoadside, parkingDuration, parkingType, address, rent, description]);
+  }, [isPublicRoadside, isDefaultOwner, isInstantOwner, parkingDuration, parkingType, address, rent, contactPhone, description]);
 
   const isFormValid = isPublicRoadside
     ? Boolean(parkingType && (selectedServiceId || parkingTypes.length === 0) && address)
-    : Boolean(parkingDuration && parkingType && (selectedServiceId || parkingTypes.length === 0) && address && rent && description.trim());
+    : isInstantOwner
+    ? Boolean(parkingDuration && parkingType && (selectedServiceId || parkingTypes.length === 0) && address && contactPhone && contactPhone.length === 10 && description.trim())
+    : Boolean(parkingDuration && parkingType && (selectedServiceId || parkingTypes.length === 0) && address && rent.trim() && description.trim());
 
   const compressImage = (base64Str: string, maxWidth = 500, maxHeight = 500, quality = 0.4): Promise<string> => {
     return new Promise((resolve) => {
@@ -273,12 +295,12 @@ export function useSpacePostForm(options?: UseSpacePostFormOptions) {
       setSubmitError("Please enter an address or use Auto Detect.");
       return;
     }
-    if (!isPublicRoadside && !rent) {
+    if (isDefaultOwner && (!rent || !rent.trim())) {
       setSubmitError("Please enter the rent amount.");
       return;
     }
-    if (!isPublicRoadside && (rent.length > 4 || Number(rent) > 9999)) {
-      setSubmitError("Rent amount must be at most 4 digits (up to ₹9,999).");
+    if (isInstantOwner && (!contactPhone || contactPhone.length !== 10)) {
+      setSubmitError("Please enter a valid 10-digit contact mobile number.");
       return;
     }
     if (!isPublicRoadside && !description.trim()) {
@@ -289,10 +311,14 @@ export function useSpacePostForm(options?: UseSpacePostFormOptions) {
     setIsSubmitting(true);
     try {
       const activeServiceId = selectedServiceId || (parkingTypes[0]?.id || "default-service");
+      const durationUnit = parkingDuration === "Hourly" ? "hr" : (parkingDuration === "Days" || parkingDuration === "Daily") ? "day" : "month";
+      const formattedRent = isInstantOwner
+        ? (rent ? `Rent: ₹${rent}/${durationUnit}` : "Rent: Hidden | Price: Hidden")
+        : `Rent: ₹${rent}/${durationUnit}`;
 
       const commentsPayload = isPublicRoadside
         ? `Rent: ₹0/free | Duration: Public Roadside | Category: Public Roadside Parking${photos.length > 0 ? `[PHOTOS]${JSON.stringify(photos)}[/PHOTOS]` : ""}`
-        : `Rent: ₹${rent}/${parkingDuration === "Hourly" ? "hr" : parkingDuration === "Days" ? "day" : "month"}${parkingDuration ? ` | Duration: ${parkingDuration}` : ""}${vehicleSize ? ` | Vehicle Size: ${vehicleSize}` : ""}${description ? ` | ${description}` : ""}${photos.length > 0 ? `[PHOTOS]${JSON.stringify(photos)}[/PHOTOS]` : ""}`;
+        : `${formattedRent}${isInstantOwner && contactPhone ? ` | Contact: ${contactPhone}` : ""}${parkingDuration ? ` | Duration: ${parkingDuration}` : ""}${vehicleSize ? ` | Vehicle Size: ${vehicleSize}` : ""}${description ? ` | ${description}` : ""}${photos.length > 0 ? `[PHOTOS]${JSON.stringify(photos)}[/PHOTOS]` : ""}`;
 
       if (editMode && editBookingId) {
         const response = await fetch(getApiUrl(`/api/bookings/${editBookingId}`), {
@@ -409,6 +435,8 @@ export function useSpacePostForm(options?: UseSpacePostFormOptions) {
     setShowLocationPickerModal,
     rent,
     setRent,
+    contactPhone,
+    setContactPhone,
     description,
     setDescription,
     isFormValid,
@@ -425,5 +453,8 @@ export function useSpacePostForm(options?: UseSpacePostFormOptions) {
     setDetectedLat,
     detectedLng,
     setDetectedLng,
+    showParkingBy,
+    isInstantOwner,
+    isDefaultOwner,
   };
 }

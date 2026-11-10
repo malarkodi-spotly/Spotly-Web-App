@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation } from "wouter";
 import MobileLayout from "@/components/layout/mobile-layout";
-import { Camera, Navigation, IndianRupee, Plus, X, Loader2, CheckCircle2, Pencil, Car, Bike, Check, MapPin, ChevronRight, Map, Sparkles, ShieldCheck, Sun, Building2, Home, AlertCircle, ArrowLeft } from "lucide-react";
+import { Camera, Navigation, IndianRupee, Plus, X, Loader2, CheckCircle2, Pencil, Car, Bike, Check, MapPin, ChevronRight, Map, Sparkles, ShieldCheck, Sun, Building2, Home, AlertCircle, ArrowLeft, Phone, EyeOff } from "lucide-react";
 import { getApiUrl } from "@/lib/api-config";
 import { motion, AnimatePresence } from "framer-motion";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import SwiggyLocationPicker from "@/components/swiggy-location-picker";
-import { useRegisterModalBack } from "@/contexts/mobile-back-context";
 import SpaceProviderDesktopPostSpace from "@/components/space-provider-desktop-post-space";
+import { isAllowedPhone, useAllowedParkingByPhones } from "@/lib/allowedPhones";
+import { useRegisterModalBack } from "@/contexts/mobile-back-context";
 
 interface ParkingTypeOption {
   id: string;
@@ -46,9 +47,21 @@ export default function CustomerBookings() {
     }
   };
   const [description, setDescription] = useState("");
+  const [contactPhone, setContactPhone] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("userMobile") || "";
+      return saved.replace(/\D/g, "").slice(-10);
+    }
+    return "";
+  });
   const [isPublicRoadside, setIsPublicRoadside] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
   const [showLocationPickerModal, setShowLocationPickerModal] = useState(false);
+  const userMobile = typeof window !== "undefined" ? localStorage.getItem("userMobile") || "" : "";
+  const { allowedPhones } = useAllowedParkingByPhones();
+  const showParkingBy = isAllowedPhone(userMobile, allowedPhones);
+  const isInstantOwner = showParkingBy && !isPublicRoadside;
+  const isDefaultOwner = !showParkingBy && !isPublicRoadside;
 
   useEffect(() => {
     if (isPublicRoadside && vehicleSize) {
@@ -99,10 +112,11 @@ export default function CustomerBookings() {
     if (!isPublicRoadside && !parkingDuration) list.push("Parking Duration");
     if (!parkingType) list.push("Parking Type");
     if (!address) list.push("Location");
-    if (!isPublicRoadside && !rent) list.push("Rent Amount");
+    if (isDefaultOwner && (!rent || !rent.trim())) list.push("Rent");
+    if (isInstantOwner && (!contactPhone || contactPhone.length !== 10)) list.push("Contact Mobile Number");
     if (!isPublicRoadside && !description.trim()) list.push("Description");
     return list;
-  }, [isPublicRoadside, parkingDuration, parkingType, address, rent, description]);
+  }, [isPublicRoadside, isDefaultOwner, isInstantOwner, parkingDuration, parkingType, address, rent, contactPhone, description]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
@@ -137,6 +151,10 @@ export default function CustomerBookings() {
           return;
         }
         const data = await res.json();
+        if (data.mobile) {
+          localStorage.setItem("userMobile", data.mobile);
+          setContactPhone((prev) => prev || data.mobile.replace(/\D/g, "").slice(-10));
+        }
         if (data.role && data.role !== "customer") {
           localStorage.removeItem("userId");
           localStorage.removeItem("userRole");
@@ -229,6 +247,13 @@ export default function CustomerBookings() {
               if (sizeMatch) {
                 setVehicleSize(sizeMatch[1].trim());
                 commentsNoPhotos = commentsNoPhotos.replace(/\|\s*Vehicle Size:\s*([^|]+)/i, "").replace(/\|\s*Size:\s*([^|]+)/i, "");
+              }
+
+              // Parse Contact Phone from comments if available
+              const contactMatch = commentsNoPhotos.match(/\|\s*(?:Contact|Mobile|Phone):\s*([0-9]{10})/i);
+              if (contactMatch) {
+                setContactPhone(contactMatch[1].trim());
+                commentsNoPhotos = commentsNoPhotos.replace(/\|\s*(?:Contact|Mobile|Phone):\s*([0-9]{10})/i, "");
               }
 
               const descMatch = commentsNoPhotos.match(/\|\s*([\s\S]+)$/);
@@ -385,11 +410,15 @@ export default function CustomerBookings() {
       setSubmitError("Please enter an address or use Auto Detect.");
       return;
     }
-    if (!isPublicRoadside && !rent) {
-      setSubmitError("Please enter the monthly rent amount.");
+    if (isDefaultOwner && (!rent || !rent.trim())) {
+      setSubmitError("Please enter the rent amount.");
       return;
     }
-    if (!isPublicRoadside && (rent.length > 4 || Number(rent) > 9999)) {
+    if (isInstantOwner && (!contactPhone || contactPhone.length !== 10)) {
+      setSubmitError("Please enter a valid 10-digit contact mobile number.");
+      return;
+    }
+    if (!isPublicRoadside && rent && (rent.length > 4 || Number(rent) > 9999)) {
       setSubmitError("Monthly rent must be at most 4 digits (up to ₹9,999).");
       return;
     }
@@ -400,9 +429,13 @@ export default function CustomerBookings() {
     setIsSubmitting(true);
 
     try {
+      const durationUnit = parkingDuration === "Hourly" ? "hr" : (parkingDuration === "Days" || parkingDuration === "Daily") ? "day" : "month";
+      const formattedRent = isInstantOwner
+        ? (rent ? `Rent: ₹${rent}/${durationUnit}` : "Rent: Hidden | Price: Hidden")
+        : `Rent: ₹${rent}/${durationUnit}`;
       const commentsPayload = isPublicRoadside
         ? `Rent: ₹0/free | Duration: Public Roadside | Category: Public Roadside Parking${photos.length > 0 ? `[PHOTOS]${JSON.stringify(photos)}[/PHOTOS]` : ""}`
-        : `Rent: ₹${rent}/${parkingDuration === "Hourly" ? "hr" : parkingDuration === "Days" ? "day" : "month"}${parkingDuration ? ` | Duration: ${parkingDuration}` : ""}${needsDateTime && startDate ? ` | Date: ${startDate}` : ""}${needsDateTime && startTime ? ` | Time: ${startTime}` : ""}${needsDateTime && endTime ? ` | End Time: ${endTime}` : ""}${vehicleSize ? ` | Vehicle Size: ${vehicleSize}` : ""}${description ? ` | ${description}` : ""}${photos.length > 0 ? `[PHOTOS]${JSON.stringify(photos)}[/PHOTOS]` : ""}`;
+        : `${formattedRent}${isInstantOwner && contactPhone ? ` | Contact: ${contactPhone}` : ""}${parkingDuration ? ` | Duration: ${parkingDuration}` : ""}${needsDateTime && startDate ? ` | Date: ${startDate}` : ""}${needsDateTime && startTime ? ` | Time: ${startTime}` : ""}${needsDateTime && endTime ? ` | End Time: ${endTime}` : ""}${vehicleSize ? ` | Vehicle Size: ${vehicleSize}` : ""}${description ? ` | ${description}` : ""}${photos.length > 0 ? `[PHOTOS]${JSON.stringify(photos)}[/PHOTOS]` : ""}`;
 
       if (editMode && editBookingId) {
         const response = await fetch(getApiUrl(`/api/bookings/${editBookingId}`), {
@@ -485,7 +518,9 @@ export default function CustomerBookings() {
 
   const isFormValid = isPublicRoadside
     ? Boolean(parkingType && selectedServiceId && address)
-    : Boolean(parkingDuration && parkingType && selectedServiceId && address && rent && description.trim());
+    : isInstantOwner
+    ? Boolean(parkingDuration && parkingType && selectedServiceId && address && contactPhone && contactPhone.length === 10 && description.trim())
+    : Boolean(parkingDuration && parkingType && selectedServiceId && address && rent.trim() && description.trim());
 
   if (!sessionValid || (editMode && isLoadingBooking)) {
     return (
@@ -600,6 +635,7 @@ export default function CustomerBookings() {
       {/* ===== DESKTOP VIEW (>= 768px) ===== */}
       <div className="hidden md:block min-h-screen bg-[#f8fafc]">
         <SpaceProviderDesktopPostSpace
+          showParkingBy={showParkingBy}
           photos={photos}
           onPhotoUpload={handlePhotoUpload}
           onRemovePhoto={removePhoto}
@@ -629,6 +665,8 @@ export default function CustomerBookings() {
           onOpenMapPicker={() => setShowLocationPickerModal(true)}
           rent={rent}
           setRent={setRent}
+          contactPhone={contactPhone}
+          setContactPhone={setContactPhone}
           description={description}
           setDescription={setDescription}
           isFormValid={isFormValid}
@@ -904,11 +942,12 @@ export default function CustomerBookings() {
             </div>
           </div>
 
-          {/* 1.5. PARKING BY (OWNER / SPOTLY) SECTION */}
-          <div>
-            <div className="flex items-center justify-between mb-2.5">
+          {/* 1.5. PARKING BY (OWNER / SPOTLY) SECTION (Allowed numbers only) */}
+          {showParkingBy && (
+            <div>
+              <div className="flex items-center justify-between mb-2.5">
               <label className="text-sm md:text-base font-bold text-neutral-900 flex items-center gap-1">
-                <span>Parking By (Owner / Spotly)</span>
+                <span>Parking By (Instant Owner / Spotly)</span>
                 <span className="text-red-500">*</span>
               </label>
               <span
@@ -918,7 +957,7 @@ export default function CustomerBookings() {
                     : "bg-indigo-50 text-[#3b2fad] border-indigo-200"
                 }`}
               >
-                {isPublicRoadside ? "By Spotly (Public)" : "Space Owner (Usual Form)"}
+                {isPublicRoadside ? "By Spotly (Public)" : "Instant Owner (Usual Form)"}
               </span>
             </div>
 
@@ -962,7 +1001,7 @@ export default function CustomerBookings() {
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-bold text-neutral-900">
-                          Space Owner
+                          Instant Owner
                         </span>
                         <span
                           className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
@@ -992,7 +1031,7 @@ export default function CustomerBookings() {
                 </div>
 
                 <p className="text-[10px] text-neutral-500 leading-relaxed">
-                  List private space as usual. Set your custom rent, duration, and amenities.
+                  List private space as Instant Owner. Set your custom rent, duration, and amenities.
                 </p>
               </div>
 
@@ -1083,6 +1122,7 @@ export default function CustomerBookings() {
               </div>
             </div>
           </div>
+          )}
 
           {/* 2. PARKING DURATION SECTION (Hidden when Public Roadside is selected) */}
           {!isPublicRoadside && (
@@ -1273,19 +1313,62 @@ export default function CustomerBookings() {
           </div>
 
 
-          {/* MONTHLY RENT SECTION (Hidden when Public Roadside is selected) */}
-          {!isPublicRoadside && (
+          {/* RENT SECTION (Default Space Owner) */}
+          {isDefaultOwner && (
+            <div>
+              <label className="block text-sm md:text-base font-bold text-neutral-900 mb-2">
+                {parkingDuration === "Hourly"
+                  ? "Hourly Rent (₹)"
+                  : (parkingDuration === "Daily" || parkingDuration === "Days")
+                  ? "Daily Rent (₹)"
+                  : "Monthly Rent (₹)"}{" "}
+                <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1 flex items-center bg-white border-2 border-neutral-200 focus-within:border-[#3b2fad] focus-within:ring-4 focus-within:ring-indigo-100 rounded-2xl p-2.5 md:p-3.5 shadow-sm transition-all">
+                  <div
+                    style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%)" }}
+                    className="w-11 h-11 md:w-12 md:h-12 rounded-xl text-white flex items-center justify-center font-black text-lg md:text-xl shadow-md shadow-[#3b2fad]/20 shrink-0"
+                  >
+                    ₹
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={rent}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 4);
+                      setRent(val);
+                    }}
+                    maxLength={4}
+                    placeholder="e.g. 2500"
+                    className="w-full px-3 bg-transparent text-lg md:text-xl font-bold text-neutral-900 placeholder:text-neutral-300 outline-none"
+                    data-testid="input-rent"
+                  />
+                </div>
+                <div className="px-4 py-3 bg-neutral-100 border-2 border-neutral-200 rounded-2xl text-xs md:text-sm font-bold text-neutral-600 flex items-center shrink-0 select-none">
+                  {parkingDuration === "Hourly"
+                    ? "/ hour"
+                    : (parkingDuration === "Daily" || parkingDuration === "Days")
+                    ? "/ day"
+                    : "/ month"}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* CONTACT MOBILE NUMBER SECTION (When Instant Owner is selected) */}
+          {isInstantOwner && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-sm md:text-base font-bold text-neutral-900 flex items-center gap-1">
-                  <span>Monthly Rent (₹)</span>
+                  <span>Contact Mobile Number</span>
                   <span className="text-red-500">*</span>
                 </label>
-                {rent && (
-                  <span className="text-xs md:text-sm font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
-                    ₹{Number(rent).toLocaleString("en-IN")} / month
-                  </span>
-                )}
+                <span className="text-[10px] md:text-xs font-semibold text-neutral-500 bg-neutral-100 px-2 py-0.5 rounded-md">
+                  Visible to Seekers
+                </span>
               </div>
 
               <div className="relative flex items-center bg-white border-2 border-neutral-200 focus-within:border-[#3b2fad] focus-within:ring-4 focus-within:ring-indigo-100 rounded-2xl p-2.5 md:p-3.5 shadow-sm transition-all">
@@ -1293,48 +1376,30 @@ export default function CustomerBookings() {
                   style={{ background: "linear-gradient(135deg, #1e3a8a 0%, #3b2fad 35%, #6d28d9 70%, #7c3aed 100%)" }}
                   className="w-11 h-11 md:w-12 md:h-12 rounded-xl text-white flex items-center justify-center font-black text-lg md:text-xl shadow-md shadow-[#3b2fad]/20 shrink-0"
                 >
-                  ₹
+                  <Phone size={18} />
+                </div>
+                <div className="px-2.5 font-bold text-sm md:text-base text-neutral-500 select-none">
+                  +91
                 </div>
                 <input
-                  type="text"
+                  type="tel"
                   inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={rent}
-                  onKeyDown={(e) => {
-                    if (
-                      ["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key) ||
-                      e.ctrlKey ||
-                      e.metaKey
-                    ) {
-                      return;
-                    }
-                    if (!/^\d$/.test(e.key)) {
-                      e.preventDefault();
-                      return;
-                    }
-                    const target = e.currentTarget;
-                    const isTextSelected = (target.selectionEnd ?? 0) - (target.selectionStart ?? 0) > 0;
-                    if (target.value.length >= 4 && !isTextSelected) {
-                      e.preventDefault();
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault();
-                    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 4);
-                    setRent(pasted);
-                  }}
+                  value={contactPhone}
                   onChange={(e) => {
-                    const val = e.target.value.replace(/\D/g, '').slice(0, 4);
-                    setRent(val);
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 10);
+                    setContactPhone(val);
                   }}
-                  maxLength={4}
-                  placeholder="e.g. 2500"
-                  className="w-full px-3 py-1 bg-transparent text-[22px] md:text-2xl font-black text-neutral-900 placeholder:text-neutral-300 outline-none"
-                  data-testid="input-rent"
+                  maxLength={10}
+                  placeholder="Enter 10-digit mobile number"
+                  className="w-full px-2 py-1 bg-transparent text-[17px] md:text-lg font-bold text-neutral-900 placeholder:text-neutral-300 outline-none"
+                  data-testid="input-contact-phone"
                 />
-                <span className="text-xs md:text-sm font-extrabold text-neutral-400 bg-neutral-100 px-3 py-1.5 md:px-4 md:py-2 rounded-xl shrink-0 mr-1">
-                  / month
-                </span>
+                {contactPhone && contactPhone.length === 10 && (
+                  <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-xl shrink-0 border border-emerald-200 mr-1 flex items-center gap-1">
+                    <Check size={12} className="stroke-[3]" />
+                    <span>Valid</span>
+                  </span>
+                )}
               </div>
             </div>
           )}
